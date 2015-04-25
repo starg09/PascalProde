@@ -815,9 +815,9 @@ procedure cargadorFixture();
     end;
 procedure menuAdmin();//Menu presentado al administrador
     var
-        k:char;
+        opcion:char;
     begin
-        k:='0';
+        opcion:='0';
         repeat
             ClrScr;
             printLogoMenu();
@@ -831,32 +831,22 @@ procedure menuAdmin();//Menu presentado al administrador
             writeln('    5: Listar partidos');
             writeln('    0: Volver al men£ principal');
             writeln();
-            if NOT(k in ['0'..'5']) then begin
-                TextBackground(Red);
-                TextColor(White);
-                writeln('  ­Opci¢n inv lida!                                                             ');
-                TextBackground(Black);
-                TextColor(LightGray);
-            end {else if (k in ['4']) then begin
-                TextBackground(Cyan);
-                TextColor(White);
-                writeln('  Opci¢n no implementada...                                                     ');
-                TextBackground(Black);
-                TextColor(LightGray);
-            end }else begin
+            if NOT(opcion in ['0'..'5']) then barraError()
+            {else if (opcion in ['4']) then barraProximamente()}
+            else begin
                 writeln();
                 writeln();
             end;
             write('  Ingrese su opci¢n: ');
-            k:=readkey;
-            case k of
+            opcion:=readkey;
+            case opcion of
                 '1': cargadorFixture;
                 '2': agregarUsuario;
                 '3': listarUsuarios;
                 '4': cargarResultado;
                 '5': listarPartidos;
             end;
-        until (k='0');
+        until (opcion='0');
     end;
 procedure listarProde(id: integer);
     var
@@ -1208,12 +1198,12 @@ procedure modifPartido(id: integer);
     end;
 procedure menuJugador(id: integer);//Menu presentado a cada jugador.
     var
-        k:char;
+        opcion:char;
         s:ansistring;//Esto es para que pueda usar "appendstr"
         usuarios: tUsuarios;
         f: file of tUsuarios;
     begin
-        k:='0';
+        opcion:='0';
         repeat
             ClrScr;
             printLogoMenu();
@@ -1231,30 +1221,20 @@ procedure menuJugador(id: integer);//Menu presentado a cada jugador.
             writeln('    3: Ver tabla de posiciones');
             writeln('    0: Volver al men£ principal');
             writeln();
-            if NOT(k in ['0'..'3']) then begin
-                TextBackground(Red);
-                TextColor(White);
-                writeln('  ­Opci¢n inv lida!                                                             ');
-                TextBackground(Black);
-                TextColor(LightGray);
-            end else if (k in ['2'..'3']) then begin
-                TextBackground(Cyan);
-                TextColor(White);
-                writeln('  Opci¢n no implementada...                                                     ');
-                TextBackground(Black);
-                TextColor(LightGray);
+            if NOT(opcion in ['0'..'3']) then barraError()
+            else if (opcion in ['2'..'3']) then barraProximamente()
             end else begin
                 writeln();
                 writeln();
             end;
             write('  Ingrese su opci¢n: ');
-            k:=readkey;
-            case k of
+            opcion:=readkey;
+            case opcion of
                 '1': listarProde(id);
                 '2': ;
                 '3': ;
             end;
-        until (k='0');
+        until (opcion='0');
     end;
 procedure loginJugador();//WIP
     var
