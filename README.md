@@ -7,9 +7,11 @@ TP de Algoritmos I, FIUBA, Catedra Guarna
 
 # To-Do
 
-* Aplicar Constantes en todo lo repetitivo.
-* Optimizar impresión de texto centrado.
+* ~~Aplicar Constantes en todo lo repetitivo.~~
+* ~~Optimizar impresión de texto centrado.~~
 * ~~Separar procedimiento printLogo en dos.~~
 * ~~Cambiar nombre del record rDatos.~~
-* Cambiar variables "k" en menus por "opcion".
-* Modularizar
+* ~~Cambiar variables "k" en menus por "opcion".~~
+* ~~Modularizar~~
+* Preparar editor de resultados de jugador
+* Preparar Tabla de puntajes.
