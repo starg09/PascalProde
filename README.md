@@ -2,7 +2,8 @@
 TP de Algoritmos I, FIUBA, Catedra Guarna
 
 # Notas Importantes
-* Algunos de los simbolos (acentos, especiales en el logo) cambian según la codificación del archivo. Para una optima compilaión, si se compila para windows, tratar al modificarlo de abrirlo y guardarlo con codificacion "DOS (CP 437)". De lo contrario los acentos y simbolos se reemplazarán con otros simbolos extraños. En otros sistemas, de verse raro la codificación UTF-8 suele funcionar bien.
+* Algunos de los simbolos (acentos, especiales en el logo) cambian según la codificación del archivo. Para una optima compilaión, tratar de abrir el archivo .pas usando la codificación "DOS (CP 437)".
+* Para guardar el archivo, según el S.O. se debe guardar en una codificación distinta. Windows, por ejemplo, usa como está mencionado previamente "DOS (CP 437)". En otros sistemas, la codificación "UTF-8" suele funcionar bien.
 
 # To-Do
 
