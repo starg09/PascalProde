@@ -2,6 +2,7 @@ Program prode;
 uses strutils,sysutils,crt,cargarFixture;
 const
     MAX_USUARIOS = 20;
+    //Nombre de los archivos usados para almacenar los datos: El fixture, los resultados ingresados por el admin y los prodes y nombres de los usuarios.
     ARCHIVO_FIXTURE = 'fixture.dat';
     ARCHIVO_RESULTADOS = 'resultados.dat';
     ARCHIVO_USUARIOS = 'usuarios.dat';
@@ -28,7 +29,7 @@ const
     C_BLANCO = 15;
     //Ancho de la pantalla. Usado para centrar textos, o hacer barras de titulo o coloreadas
     //(Maximo default en consola de Windows: 80)
-    ANCHO_PANTALLA = 80
+    ANCHO_PANTALLA = 80;
 type
     rGoles = record
         gol_l: integer;
@@ -41,6 +42,7 @@ type
     tUsuarios = array[1..MAX_USUARIOS] of rUsuarios;
     tProde = array[1..MAX_PARTIDOS] of rGoles;
     tPuntos = array[1..MAX_USUARIOS] of byte;
+(*Procedimientos Decorativos y minimos*)
 procedure printLogoIntro();
     begin
         TextColor(Green);
@@ -101,6 +103,17 @@ procedure printLogoMenu();
         writeln('================================================================================');
         TextColor(LightGray);
     end;
+procedure writelnCentrado(linea: string);
+    Var
+        i: byte;
+        long: integer;
+    begin
+        long:= (ANCHO_PANTALLA-length(linea)) div 2;
+        if (ANCHO_PANTALLA-length(linea)) mod 2 = 1 then write(' ');
+        for i:=1 to long do write(' ');
+        write(linea);
+        writeln();
+    end;
 procedure barraTitulo(linea: string);//Muestra una barra de titulo con fondo gris
     var
         i: byte;
@@ -109,7 +122,7 @@ procedure barraTitulo(linea: string);//Muestra una barra de titulo con fondo gri
         TextColor(Black);
         write('  ');
         write(linea);
-        for i:=1 to (78-length(linea)) do write(' ');
+        for i:=1 to (ANCHO_PANTALLA-2-length(linea)) do write(' ');//Resto al largo de la pantalla 2 espacios al comienzo, y el texto ingresado.
         TextColor(LightGray);
         TextBackground(Black);
     end;
@@ -121,7 +134,7 @@ procedure barraCualquiera(color:byte; linea: string);//Variacion de barraTitulo,
         TextColor(White);
         write('  ');
         write(linea);
-        for i:=1 to (77-length(linea)) do write(' ');
+        for i:=1 to (ANCHO_PANTALLA-3-length(linea)) do write(' ');//Dejo un espacio menos que en barraTitulo, para que no baje de linea al poner el readkey.
         TextColor(LightGray);
         TextBackground(Black);
     end;
@@ -141,6 +154,52 @@ procedure barraProximamente();
         TextBackground(Black);
         TextColor(LightGray);
     end;
+function teclaConsulta(color: byte; s: string):char;
+    var
+        k: char;
+    begin
+        barraCualquiera(color,s+' [S/N]');
+        k:= readkey;
+        while NOT(k in ['s','n','S','N']) do begin
+            GotoXY(1,WhereY);
+            clreol;
+            barraCualquiera(C_BLANCO,s+' [S/N]');
+            delay(50);
+            GotoXY(1,WhereY);
+            clreol;
+            barraCualquiera(color,s+' [S/N]');
+            k:= readkey;
+        end;
+    end;
+(*Carga de archivos*)
+procedure cargarTablaUsuarios(var t: tUsuarios);
+    var
+        f: file of tUsuarios;
+    begin
+        assign(f, ARCHIVO_USUARIOS);
+        reset(f);
+        read(f,t);
+        close(f);
+    end;
+procedure cargarTablaProde(var t: tProde);
+    var
+        f: file of tProde;
+    begin
+        assign(f, ARCHIVO_RESULTADOS);
+        reset(f);
+        read(f,t);
+        close(f);
+    end;
+procedure cargarTablaFixture(var t: tFixture);
+    var
+        f: file of tFixture;
+    begin
+        assign(f, ARCHIVO_FIXTURE);
+        reset(f);
+        read(f,t);
+        close(f);
+    end;
+(*Procedimientos de calculo*)
 procedure ordenarUsuarios(var u: tUsuarios); 
     var cambio:boolean; 
         i,j:integer; 
@@ -166,19 +225,11 @@ procedure ordenarUsuarios(var u: tUsuarios);
 function puntajePartido(id,n:integer): integer;
     var
         usuarios: tUsuarios;
-        fusuarios: file of tUsuarios;
         res: tProde;
-        fres: file of tProde;
         i,p1,p2,r1,r2: integer;
     begin
-        assign(fusuarios, ARCHIVO_USUARIOS);
-        reset(fusuarios);
-        read(fusuarios,usuarios);
-        Close(fusuarios);
-        assign(fres, ARCHIVO_RESULTADOS);
-        reset(fres);
-        read(fres,res);
-        Close(fres);
+        cargarTablaUsuarios(usuarios);
+        cargarTablaProde(res);
         i:= 0;
         if (res[n].gol_l < res[n].gol_v) then p1:=0 else if(res[n].gol_l > res[n].gol_v) then p1:=2 else p1:=1;
         if (usuarios[id].prode[n].gol_l < usuarios[id].prode[n].gol_v) then p2:=0 else if(usuarios[id].prode[n].gol_l > usuarios[id].prode[n].gol_v) then p2:=2 else p2:=1;
@@ -190,7 +241,35 @@ function puntajePartido(id,n:integer): integer;
         if (r1=r2) then i:= i+1;
         puntajePartido:= i;
     end;
-procedure democolores();//A remover antes de mandar final
+procedure resetearResultados();
+    var
+        res: tProde;
+        fres: file of tProde;
+        i: integer;
+    begin
+        assign(fres, ARCHIVO_RESULTADOS);
+        Rewrite(fres);
+        i:= 1;
+        while i<=MAX_PARTIDOS do begin
+            res[i].gol_l:= -1;
+            res[i].gol_v:= -1;
+            i:= i+1;
+        end;
+        Write(fres,res);
+        Close(fres);
+    end;
+procedure resetearFixture();
+    var
+        fixture: tFixture;
+        f: file of tFixture;
+    begin
+        assign(f, ARCHIVO_FIXTURE);
+        Rewrite(f);
+        cargar_fixture(fixture);
+        Write(f,fixture);
+        Close(f);
+    end;
+procedure democolores();//Remover antes de mandar final
     var
         k:char;
         i: integer;
@@ -220,16 +299,15 @@ procedure democolores();//A remover antes de mandar final
         end;
         k:=readkey;
     end;
+(*Procedimientos basicos (Menus) *)
 procedure listarPartidos();
     var
         partidos: tFixture;
-        f: file of tFixture;
         res: tProde;
-        fres: file of tProde;
         i,j,max,jmax: integer;
         maxalcanzado,cambio,np: boolean;
         instancia: string;
-        s: ansistring;
+        s: string;
     begin
         ClrScr;
         printLogoMenu();
@@ -238,93 +316,81 @@ procedure listarPartidos();
             writeln();
             writeln();
             TextColor(Red);
-            writeln('              Error: todav¡a no hay un fixture cargado que mostrar.');
+            writelnCentrado('Error: todav¡a no hay un fixture cargado que mostrar.');
             writeln();
+            writeln();
+        end else if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+            barraTitulo('Listar Partidos');
+            writeln();
+            writeln();
+            TextColor(Red);
+            writelnCentrado('ERROR: No se pudo encontrar la grilla central.');
+            writelnCentrado('Esta puede regenerarse con la opci¢n 1 del men£ de Administrador.');
             writeln();
         end else begin
-            if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
-                barraTitulo('Listar Partidos');
-                writeln();
-                writeln();
-                TextColor(Red);
-                writeln('            Error: resultados corruptos. (POR FAVOR, REPORTAR EL BUG)');
-                writeln();
-                writeln();
-            end else begin
-                assign(f, ARCHIVO_FIXTURE);
-                reset(f);
-                read(f,partidos);
-                assign(fres, ARCHIVO_RESULTADOS);
-                reset(fres);
-                read(fres,res);
-                i:= 1;
-                jmax:= 1;
-                instancia:= 'Nada';
-                while (i <= MAX_PARTIDOS) do begin
-                    jmax:= jmax+1;
-                    if (instancia<>partidos[i].instancia) then begin
-                        jmax:= jmax+3;
-                        instancia:= partidos[i].instancia;
-                    end;
-                    i:= i+1;
+            cargarTablaFixture(partidos);
+            cargarTablaProde(res);
+            i:= 1;
+            jmax:= 1;
+            instancia:= 'Nada';
+            while (i <= MAX_PARTIDOS) do begin
+                jmax:= jmax+1;
+                if (instancia<>partidos[i].instancia) then begin
+                    jmax:= jmax+3;
+                    instancia:= partidos[i].instancia;
                 end;
-                i:= 1;
-                j:= 1;
-                while (i <= MAX_PARTIDOS) do begin
-                    if ((j mod 9 = 1) OR (np)) then begin
-                        np:= false;
-                        ClrScr;
-                        printLogoMenu();
-                        TextBackground(LightGray);
-                        TextColor(Black);
-                        s:='Listar Usuarios (';
-                        appendstr(s,inttostr((j div 9)+1));
-                        appendstr(s,'/');
-                        appendstr(s,inttostr(jmax div 9));
-                        appendstr(s,')');
-                        barraTitulo(s);
-                        writeln();
-                        TextColor(LightGray);
-                        TextBackground(Black);
-                        instancia:= partidos[i].instancia;
-                        writeln('  ',instancia);
-                        writeln();
-                    end;
-                    cambio:= false;
-                    if (instancia<>partidos[i].instancia) then begin
-                        instancia:= partidos[i].instancia;
-                        writeln();
-                        writeln('  ',instancia);
-                        writeln();
-                        j:= j+3;
-                    end;
-                    if (i < MAX_PARTIDOS) AND (instancia<>partidos[i+1].instancia) then cambio:= true;
-                    write('    ',i,') ',partidos[i].local,' - ',partidos[i].visitante);
-                    if (res[i].gol_l<0) OR (res[i].gol_v<0) then begin
-                        writeln();
-                    end else begin
-                        writeln(' (',res[i].gol_l,'-',res[i].gol_v,')');
-                    end;
-                    if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
-                        writeln();
-                        TextColor(6);
-                        write('  Presione cualquier tecla para mostrar la siguiente pagina...');
-                        TextColor(LightGray);
-                        np:= true;
-                        if j mod 9 <> 0 then j:= j+(9-(j mod 9));
-                        readkey;
-                    end;
-                    i:= i+1;
-                    j:= j+1;
-                    if (i > MAX_PARTIDOS) then begin
-                        writeln();
-                        writeln();
-                        writeln();
-                        writeln();
-                    end;
+                i:= i+1;
+            end;
+            i:= 1;
+            j:= 1;
+            while (i <= MAX_PARTIDOS) do begin
+                if ((j mod 9 = 1) OR (np)) then begin
+                    np:= false;
+                    ClrScr;
+                    printLogoMenu();
+                    TextBackground(LightGray);
+                    TextColor(Black);
+                    s:='Listar Usuarios ('+inttostr((j div 9)+1)+'/'+inttostr(jmax div 9)+')';
+                    barraTitulo(s);
+                    writeln();
+                    TextColor(LightGray);
+                    TextBackground(Black);
+                    instancia:= partidos[i].instancia;
+                    writeln('  ',instancia);
+                    writeln();
                 end;
-            Close(f);
-            Close(fres);
+                cambio:= false;
+                if (instancia<>partidos[i].instancia) then begin
+                    instancia:= partidos[i].instancia;
+                    writeln();
+                    writeln('  ',instancia);
+                    writeln();
+                    j:= j+3;
+                end;
+                if (i < MAX_PARTIDOS) AND (instancia<>partidos[i+1].instancia) then cambio:= true;
+                write('    ',i,') ',partidos[i].local,' - ',partidos[i].visitante);
+                if (res[i].gol_l<0) OR (res[i].gol_v<0) then begin
+                    writeln();
+                end else begin
+                    writeln(' (',res[i].gol_l,'-',res[i].gol_v,')');
+                end;
+                if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
+                    writeln();
+                    TextColor(6);
+                    write('  Presione cualquier tecla para mostrar la siguiente pagina...');
+                    TextColor(LightGray);
+                    np:= true;
+                    if j mod 9 <> 0 then j:= j+(9-(j mod 9));
+                    readkey;
+                end;
+                i:= i+1;
+                j:= j+1;
+                if (i > MAX_PARTIDOS) then begin
+                    writeln();
+                    writeln();
+                    writeln();
+                    writeln();
+                end;
             end;
         end;
         writeln();
@@ -335,7 +401,6 @@ procedure listarPartidos();
 procedure cargarResultado();
     var
         partidos: tFixture;
-        f: file of tFixture;
         res: tProde;
         fres: file of tProde;
         n,i,j: integer;
@@ -350,15 +415,23 @@ procedure cargarResultado();
         writeln();
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
             TextColor(Red);
-            writeln('           No puede subirse un resultado si no hay un fixture cargado.');
+            writelnCentrado('No puede subirse un resultado si no hay un fixture cargado.');
             writeln();
             writeln();
             writeln();
             TextColor(LightGray);
             write('  Presione cualquier tecla para volver al men£ anterior...');
             readkey;
-        end
-        else begin
+        end else if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+            TextColor(Red);
+            writelnCentrado('ERROR: No se pudo encontrar la grilla central.');
+            writelnCentrado('Esta puede regenerarse con la opci¢n 1 del men£ de Administrador.');
+            writeln();
+            writeln();
+            TextColor(LightGray);
+            write('  Presione cualquier tecla para volver al men£ anterior...');
+            readkey;
+        end else begin
             repeat
                 repetir:= false;
                 write('  Ingrese el n£mero de partido a cargar: ');
@@ -369,22 +442,11 @@ procedure cargarResultado();
                     TextColor(12);
                     writeln();
                     writeln();
-                    writeln('  Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
+                    writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
                     writeln();
                     TextColor(LightGray);
                     writeln();
-                    barraCualquiera(1,'¨Desea volver a ingresar un resultado? [S/N]');
-                    k:= readkey;
-                    while NOT(k in ['s','n','S','N']) do begin
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(15,'¨Desea volver a ingresar un resultado? [S/N]');
-                        delay(50);
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(1,'¨Desea volver a ingresar un resultado? [S/N]');
-                        k:= readkey;
-                    end;
+                    k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar un resultado?');
                     if k in ['s','S'] then begin
                         repetir:= true;
                         ClrScr;
@@ -394,16 +456,7 @@ procedure cargarResultado();
                         writeln();
                     end;
                 end else if (n<1) OR (n>MAX_PARTIDOS) then begin
-                    repeat
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(15,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente? [S/N]');
-                        delay(50);
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(4,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente? [S/N]');
-                        k:=readkey;
-                    until k in ['s','n','S','N'];
+                    k:= teclaConsulta(C_ROJO,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente?');
                     if k in ['s','S'] then begin
                         repetir:=true;
                         ClrScr;
@@ -415,13 +468,8 @@ procedure cargarResultado();
                 end else begin
                     salir:= false;
                     repeat
-                        assign(f, ARCHIVO_FIXTURE);
-                        reset(f);
-                        read(f,partidos);
-                        assign(fres, ARCHIVO_RESULTADOS);
-                        reset(fres);
-                        while not eof(fres) do read(fres,res);
-                        close(fres);
+                        cargarTablaFixture(partidos);
+                        cargarTablaProde(res);
                         writeln();
                         TextColor(Yellow);
                         write('    Partido ',n,': ',partidos[n].local,' - ',partidos[n].visitante);
@@ -449,24 +497,10 @@ procedure cargarResultado();
                         if NOT((i = -99) or (j = -99)) then begin
                             writeln('  Usted ingres¢ el siguiente resultado: ',partidos[n].local,' ',i,' - ',partidos[n].visitante,' ',j);
                             conf:= false;
-                            barraCualquiera(3,'¨Es esto correcto? [S/N]');
-                            k:= readkey;
-                            while NOT(k in ['s','n','S','N']) do begin
-                                GotoXY(1,WhereY);
-                                clreol;
-                                barraCualquiera(15,'¨Es esto correcto? [S/N]');
-                                delay(50);
-                                GotoXY(1,WhereY);
-                                clreol;
-                                barraCualquiera(3,'¨Es esto correcto? [S/N]');
-                                k:= readkey;
-                            end;
+                            k:= teclaConsulta(C_CYAN,'¨Es esto correcto?');
                             if k in ['s','S'] then begin
                                 conf:= true;
-                                assign(fres, ARCHIVO_RESULTADOS);
-                                reset(fres);
-                                while not eof(fres) do read(fres,res);
-                                close(fres);
+                                cargarTablaProde(res);
                                 assign(fres, ARCHIVO_RESULTADOS);
                                 Rewrite(fres);
                                 res[n].gol_l:= i;
@@ -483,43 +517,20 @@ procedure cargarResultado();
                                 conf:= true;
                                 writeln();
                                 writeln();
-                                barraCualquiera(1,'¨Desea volver a ingresar el resultado? [S/N]');
-                                k:= readkey;
-                                while NOT(k in ['s','n','S','N']) do begin
-                                    GotoXY(1,WhereY);
-                                    clreol;
-                                    barraCualquiera(15,'¨Desea volver a ingresar el resultado? [S/N]');
-                                    delay(50);
-                                    GotoXY(1,WhereY);
-                                    clreol;
-                                    barraCualquiera(1,'¨Desea volver a ingresar el resultado? [S/N]');
-                                    k:= readkey;
-                                end;
+                                k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar el resultado?');
                                 if k in ['n','N'] then salir:= true;
                             end;
                         end else begin
                             conf:= true;
                             TextColor(12);
-                            writeln('  Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
+                            writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
                             writeln();
                             TextColor(LightGray);
                         end;
-                        close(f);
                     until (conf = true);
                     if NOT(salir) then begin
                         repetir:= false;
-                        barraCualquiera(1,'¨Desea agregar otro resultado? [S/N]');
-                        k:= readkey;
-                        while NOT(k in ['s','n','S','N']) do begin
-                            GotoXY(1,WhereY);
-                            clreol;
-                            barraCualquiera(15,'¨Desea agregar otro resultado? [S/N]');
-                            delay(50);
-                            GotoXY(1,WhereY);
-                            clreol;
-                            barraCualquiera(1,'¨Desea agregar otro resultado? [S/N]');
-                            k:= readkey;
-                        end;
+                        k:= teclaConsulta(C_AZUL,'¨Desea agregar otro resultado?');
                         if k in ['s','S'] then begin
                             repetir:= true;
                             ClrScr;
@@ -558,7 +569,7 @@ procedure listarUsuarios();
         f: file of tUsuarios;
         i,j,l,lmax,max: integer;
         maxalcanzado,mayor,nickenuso,agregado: boolean;
-        s: ansistring;
+        s: string;
     begin
         ClrScr;
         printLogoMenu();
@@ -571,11 +582,9 @@ procedure listarUsuarios();
             writeln();
             writeln();
             TextColor(LightGreen);
-            writeln('      Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
+            writelnCentrado('Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
         end else begin
-            assign(f, ARCHIVO_USUARIOS);
-            reset(f);
-            read(f,usuarios);
+            cargarTablaUsuarios(usuarios);
             i:=1;
             maxalcanzado:=false;
             while (i <= MAX_USUARIOS) AND (NOT maxalcanzado) do if usuarios[i].nombre='NULLUSER' then maxalcanzado:=true else i:=i+1;
@@ -585,11 +594,9 @@ procedure listarUsuarios();
                 writeln();
                 writeln();
                 TextColor(Red);
-                writeln('                   No hay usuarios registrados en el sistema.');
+                writelnCentrado('No hay usuarios registrados en el sistema.');
             end else begin
-                s:='Listar Usuarios (1/';
-                appendstr(s,inttostr((max div 10)+1));
-                appendstr(s,')');
+                s:='Listar Usuarios (1/'+inttostr((max div 10)+1)+')';
                 barraTitulo(s);
                 writeln();
                 ordenarUsuarios(usuarios);
@@ -606,18 +613,13 @@ procedure listarUsuarios();
                         readkey;
                         ClrScr;
                         printLogoMenu();
-                        s:='Listar Usuarios (';
-                        appendstr(s,inttostr((i div 10)+1));
-                        appendstr(s,'/');
-                        appendstr(s,inttostr((max div 10)+1));
-                        appendstr(s,')');
+                        s:='Listar Usuarios ('+inttostr((i div 10)+1)+'/'+inttostr((max div 10)+1)+')';
                         barraTitulo(s);
                         writeln();
                     end;
                 end;
             end;
         end;
-        Close(f);
         writeln();
         writeln();
         TextColor(LightGray);
@@ -639,7 +641,7 @@ procedure agregarUsuario();
         writeln();
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
             TextColor(Red);
-            writeln('           No se pueden crear usuarios hasta que se cargue el fixture.');
+            writelnCentrado('No se pueden crear usuarios hasta que se cargue el fixture.');
             writeln();
             writeln();
         end else begin
@@ -649,7 +651,7 @@ procedure agregarUsuario();
                 for i:=1 to MAX_USUARIOS do usuarios[i].nombre:='NULLUSER';
                 Write(f, usuarios);
                 TextColor(LightGreen);
-                writeln('      Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
+                writelnCentrado('Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
                 writeln();
                 writeln();
                 writeln();
@@ -672,7 +674,7 @@ procedure agregarUsuario();
             end;
             if maxalcanzado then begin
                 TextColor(Red);
-                writeln('           Ya se alcanz¢ el l¡mite m ximo de usuarios para el sistema.');
+                writelnCentrado('Ya se alcanz¢ el l¡mite m ximo de usuarios para el sistema.');
                 writeln();
                 writeln();
             end else begin
@@ -687,7 +689,7 @@ procedure agregarUsuario();
                 writeln();
                 if UpperCase(usuarioIng)='NULLUSER' then begin
                     TextColor(Red);
-                    writeln('  ERROR: No se puede usar el nombre "NULLUSER", esta reservado por el sistema.');
+                    writelnCentrado('ERROR: No se puede usar el nombre "NULLUSER", esta reservado por el sistema.');
                     writeln();
                     writeln();
                 end else begin
@@ -696,7 +698,7 @@ procedure agregarUsuario();
                     for i:=1 to MAX_USUARIOS do if (usuarios[i].nombre)=(usuarioIng) then nickenuso:=true;
                     if nickenuso then begin
                         TextColor(Red);
-                        writeln('                El nombre de usuario ya se encuentra en el sistema.');
+                        writelnCentrado('El nombre de usuario ya se encuentra en el sistema.');
                         writeln();
                         writeln();
                     end else begin
@@ -704,18 +706,18 @@ procedure agregarUsuario();
                         for i:=1 to length(usuarioIng) do IF NOT(usuarioIng[i] in ['a'..'z','A'..'Z','0'..'9']) then charvalidos:=false;
                         if Length(usuarioIng)>10 then begin {Revisar largo del nombre ingresado}
                             TextColor(Red);
-                            writeln('            El nombre de usuario no puede superar los 10 caracteres.');
+                            writelnCentrado('El nombre de usuario no puede superar los 10 caracteres.');
                             writeln();
                             writeln();
                         end else if Length(usuarioIng)=0 then begin {Revisar largo del nombre ingresado}
                             TextColor(Red);
-                            writeln('                    Error: No ha ingresado un usuario valido.');
+                            writelnCentrado('Error: No ha ingresado un usuario valido.');
                             writeln();
                             writeln();
                         end else if NOT(charvalidos) then begin {Revisar largo del nombre ingresado}
                             TextColor(Red);
-                            writeln('                     Error: Ha ingresado caracteres no validos');
-                            writeln('              Solo pueden usarse caracteres alfanum‚ricos [a-Z,0-9]');
+                            writelnCentrado('Error: Ha ingresado caracteres no validos');
+                            writelnCentrado('Solo pueden usarse caracteres alfanum‚ricos [a-Z,0-9]');
                             writeln();
                         end else begin {Agregar el usuario al archivo}
                             i:= 1;
@@ -741,8 +743,8 @@ procedure agregarUsuario();
                                 writeln();
                             end else begin
                                 TextColor(Red);
-                                writeln('              Error inesperado. No hay mas lugar, o algo raro pas¢.');
-                                writeln('                     Por favor, contacte a un administrador.');
+                                writelnCentrado('Error inesperado. No hay mas lugar, o algo raro pas¢.');
+                                writelnCentrado('Por favor, contacte a un administrador.');
                                 writeln();
                             end;
                             {...}
@@ -771,42 +773,31 @@ procedure agregarUsuario();
     end;
 procedure cargadorFixture();
     var
-        fixture: tFixture;
-        f: file of tFixture;
-        res: tProde;
-        fres: file of tProde;
-        i: integer;
+        i,j: byte;
     begin
         ClrScr;
         printLogoMenu();
         barraTitulo('Carga de Fixture');
         writeln();
         writeln();
-        if FileExists(ARCHIVO_FIXTURE) then begin
-            TextColor(Yellow);
-            writeln('             Ya se ha cargado el fixture, no puede hacerse de nuevo.');
-            writeln();
-            writeln();
-        end
-        else begin
-            assign(f, ARCHIVO_FIXTURE);
-            Rewrite(f);
-            cargar_fixture(fixture);
-            Write(f,fixture);
-            Close(f);
-            assign(fres, ARCHIVO_RESULTADOS);
-            Rewrite(fres);
-            i:= 1;
-            while i<=MAX_PARTIDOS do begin
-                res[i].gol_l:= -1;
-                res[i].gol_v:= -1;
-                i:= i+1;
-            end;
-            Write(fres,res);
-            Close(fres);
+        if NOT(FileExists(ARCHIVO_FIXTURE)) or NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
             TextColor(LightGreen);
-            writeln('                           ­Fixture cargado con ‚xito!');
-            writeln();
+            j:= 0;
+            if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
+                resetearFixture();
+                writelnCentrado('­Fixture cargado con ‚xito!');
+                j:= j+1;
+            end;
+            if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+                resetearResultados();
+                writelnCentrado('­Grilla Central creada con ‚xito!');
+                j:= j+1;
+            end;
+            for i:=1 to j do writeln();
+        end else begin
+            TextColor(Yellow);
+            writelnCentrado('Ya se ha preparado el fixture y');
+            writelnCentrado('la grilla central, no puede hacerse de nuevo.');
             writeln();
         end;
         TextColor(LightGray);
@@ -851,135 +842,110 @@ procedure menuAdmin();//Menu presentado al administrador
 procedure listarProde(id: integer);
     var
         partidos: tFixture;
-        f: file of tFixture;
         usuarios: tUsuarios;
         fusuarios: file of tUsuarios;
         res: tProde;
-        fres: file of tProde;
         i,j,max,jmax: integer;
         maxalcanzado,cambio,np: boolean;
-        instancia: string;
-        s,s2: ansistring;
+        s,instancia: string;
     begin
         ClrScr;
         printLogoMenu();
-        assign(fusuarios, ARCHIVO_USUARIOS);
-        reset(fusuarios);
-        read(fusuarios,usuarios);
-        Close(fusuarios);
+        cargarTablaUsuarios(usuarios);//No reviso que exista el arhivo primero, total solo se puede acceder bajo esa condicion.
         s:= 'Listar Prode - ';
-        appendstr(s,usuarios[id].nombre);
+        s:= s+usuarios[id].nombre;
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
             barraTitulo(s);
             writeln();
             writeln();
             TextColor(Red);
-            writeln('              Error: todav¡a no hay un fixture cargado que mostrar.');
+            writelnCentrado('Error: todav¡a no hay un fixture cargado que mostrar.');
             writeln();
+            writeln();
+        end else if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+            barraTitulo(s);
+            writeln();
+            writeln();
+            TextColor(Red);
+            writelnCentrado('ERROR: No se pudo encontrar la grilla central.');
+            writelnCentrado('Por favor, reporte este error a su administrador.');
             writeln();
         end else begin
-            if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
-                barraTitulo(s);
-                writeln();
-                writeln();
-                TextColor(Red);
-                writeln('            Error: resultados corruptos. (POR FAVOR, REPORTAR EL BUG)');
-                writeln();
-                writeln();
-            end else begin
-                assign(f, ARCHIVO_FIXTURE);
-                reset(f);
-                read(f,partidos);
-                assign(fres, ARCHIVO_RESULTADOS);
-                reset(fres);
-                read(fres,res);
-                assign(fusuarios, ARCHIVO_USUARIOS);
-                reset(fusuarios);
-                read(fusuarios,usuarios);
-                i:= 1;
-                jmax:= 1;
-                instancia:= 'Nada';
-                while (i <= MAX_PARTIDOS) do begin
-                    jmax:= jmax+1;
-                    if (instancia<>partidos[i].instancia) then begin
-                        jmax:= jmax+3;
-                        instancia:= partidos[i].instancia;
-                    end;
-                    i:= i+1;
+            cargarTablaFixture(partidos);
+            cargarTablaProde(res);
+            i:= 1;
+            jmax:= 1;
+            instancia:= 'Nada';
+            while (i <= MAX_PARTIDOS) do begin
+                jmax:= jmax+1;
+                if (instancia<>partidos[i].instancia) then begin
+                    jmax:= jmax+3;
+                    instancia:= partidos[i].instancia;
                 end;
-                i:= 1;
-                j:= 1;
-                while (i <= MAX_PARTIDOS) do begin
-                    if ((j mod 9 = 1) OR (np)) then begin
-                        np:= false;
-                        ClrScr;
-                        printLogoMenu();
-                        TextBackground(LightGray);
-                        TextColor(Black);
-                        s2:=s;
-                        appendstr(s2,' (');
-                        appendstr(s2,inttostr((j div 9)+1));
-                        appendstr(s2,'/');
-                        appendstr(s2,inttostr(jmax div 9));
-                        appendstr(s2,')');
-                        barraTitulo(s2);
-                        writeln();
-                        TextColor(LightGray);
-                        TextBackground(Black);
-                        instancia:= partidos[i].instancia;
-                        writeln('  ',instancia);
-                        writeln();
-                    end;
-                    cambio:= false;
-                    if (instancia<>partidos[i].instancia) then begin
-                        instancia:= partidos[i].instancia;
-                        writeln();
-                        writeln('  ',instancia);
-                        writeln();
-                        j:= j+3;
-                    end;
-                    if (i < MAX_PARTIDOS) AND (instancia<>partidos[i+1].instancia) then cambio:= true;
-                    write('    ',i,': ',partidos[i].local,' - ',partidos[i].visitante);
-                    TextColor(8);
-                    if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) then write(' (',res[i].gol_l,'-',res[i].gol_v,')');
-                    if NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' [',res[i].gol_l,'-',res[i].gol_v,']');
-                    if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) AND NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' (',puntajePartido(id,i),')');
+                i:= i+1;
+            end;
+            i:= 1;
+            j:= 1;
+            while (i <= MAX_PARTIDOS) do begin
+                if ((j mod 9 = 1) OR (np)) then begin
+                    np:= false;
+                    ClrScr;
+                    printLogoMenu();
+                    TextBackground(LightGray);
+                    TextColor(Black);
+                    s:=s+' ('+inttostr((j div 9)+1)+'/'+inttostr(jmax div 9)+')';
+                    barraTitulo(s);
                     writeln();
                     TextColor(LightGray);
-                    if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
-                        writeln();
-                        TextColor(6);
-                        write('  Presione cualquier tecla para mostrar la siguiente pagina...');
-                        TextColor(LightGray);
-                        np:= true;
-                        if j mod 9 <> 0 then j:= j+(9-(j mod 9));
-                        readkey;
-                    end;
-                    i:= i+1;
-                    j:= j+1;
-                    if (i > MAX_PARTIDOS) then begin
-                        writeln();
-                        writeln();
-                        writeln();
-                        writeln();
-                    end;
+                    TextBackground(Black);
+                    instancia:= partidos[i].instancia;
+                    writeln('  ',instancia);
+                    writeln();
+                end;
+                cambio:= false;
+                if (instancia<>partidos[i].instancia) then begin
+                    instancia:= partidos[i].instancia;
+                    writeln();
+                    writeln('  ',instancia);
+                    writeln();
+                    j:= j+3;
+                end;
+                if (i < MAX_PARTIDOS) AND (instancia<>partidos[i+1].instancia) then cambio:= true;
+                write('    ',i,': ',partidos[i].local,' - ',partidos[i].visitante);
+                TextColor(8);
+                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) then write(' (',res[i].gol_l,'-',res[i].gol_v,')');
+                if NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' [',res[i].gol_l,'-',res[i].gol_v,']');
+                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) AND NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' (',puntajePartido(id,i),')');
+                writeln();
+                TextColor(LightGray);
+                if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
+                    writeln();
+                    TextColor(6);
+                    write('  Presione cualquier tecla para mostrar la siguiente pagina...');
+                    TextColor(LightGray);
+                    np:= true;
+                    if j mod 9 <> 0 then j:= j+(9-(j mod 9));
+                    readkey;
+                end;
+                i:= i+1;
+                j:= j+1;
+                if (i > MAX_PARTIDOS) then begin
+                    writeln();
+                    writeln();
+                    writeln();
+                    writeln();
                 end;
             end;
-            Close(f);
-            Close(fres);
-            Close(fusuarios);
         end;
         writeln();
         TextColor(LightGray);
         write('  Presione cualquier tecla para volver al men£ anterior...');
         readkey;
     end;
-procedure modifPartido(id: integer);
+procedure modifPartido(id: integer);//WIP
     var
         partidos: tFixture;
-        f: file of tFixture;
         usuarios: tUsuarios;
-        fusuarios: file of tUsuarios;
         res: tProde;
         fres: file of tProde;
         n,i,j: integer;
@@ -989,20 +955,29 @@ procedure modifPartido(id: integer);
     begin
         ClrScr;
         printLogoMenu();
-        barraTitulo('Carga de resultado');
+        cargarTablaUsuarios(usuarios);
+        barraTitulo('Subir resultado - '+usuarios[id].nombre);
         writeln();
         writeln();
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
             TextColor(Red);
-            writeln('           No puede subirse un resultado si no hay un fixture cargado.');
+            writelnCentrado('No puede subirse un resultado si no hay un fixture cargado.');
             writeln();
             writeln();
             writeln();
             TextColor(LightGray);
             write('  Presione cualquier tecla para volver al men£ anterior...');
             readkey;
-        end
-        else begin
+        end else if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+            TextColor(Red);
+            writelnCentrado('ERROR: No se pudo encontrar la grilla central.');
+            writelnCentrado('Por favor, reporte este error a su administrador.');
+            writeln();
+            writeln();
+            TextColor(LightGray);
+            write('  Presione cualquier tecla para volver al men£ anterior...');
+            readkey;
+        end else begin
             repeat
                 repetir:= false;
                 write('  Ingrese el n£mero de partido a modificar: ');
@@ -1013,41 +988,21 @@ procedure modifPartido(id: integer);
                     TextColor(12);
                     writeln();
                     writeln();
-                    writeln('  Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
+                    writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
                     writeln();
                     TextColor(LightGray);
                     writeln();
-                    barraCualquiera(1,'¨Desea volver a ingresar un resultado? [S/N]');
-                    k:= readkey;
-                    while NOT(k in ['s','n','S','N']) do begin
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(15,'¨Desea volver a ingresar un resultado? [S/N]');
-                        delay(50);
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(1,'¨Desea volver a ingresar un resultado? [S/N]');
-                        k:= readkey;
-                    end;
+                    k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar un resultado?');
                     if k in ['s','S'] then begin
                         repetir:= true;
                         ClrScr;
                         printLogoMenu();
-                        barraTitulo('Carga de resultado');
+                        barraTitulo('Carga de resultado - '+usuarios[id].nombre);
                         writeln();
                         writeln();
                     end;
                 end else if (n<1) OR (n>MAX_PARTIDOS) then begin
-                    repeat
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(15,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente? [S/N]');
-                        delay(50);
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(4,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente? [S/N]');
-                        k:=readkey;
-                    until k in ['s','n','S','N'];
+                    k:= teclaConsulta(C_ROJO,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente?');
                     if k in ['s','S'] then begin
                         repetir:=true;
                         ClrScr;
@@ -1059,13 +1014,8 @@ procedure modifPartido(id: integer);
                 end else begin
                     salir:= false;
                     repeat
-                        assign(f, ARCHIVO_FIXTURE);
-                        reset(f);
-                        read(f,partidos);
-                        assign(fres, ARCHIVO_RESULTADOS);
-                        reset(fres);
-                        read(fres,res)
-                        close(fres);
+                        cargarTablaFixture(partidos);
+                        cargarTablaProde(res);
                         writeln();
                         TextColor(Yellow);
                         write('    Partido ',n,': ',partidos[n].local,' - ',partidos[n].visitante);
@@ -1093,24 +1043,10 @@ procedure modifPartido(id: integer);
                         if NOT((i = -99) or (j = -99)) then begin
                             writeln('  Usted ingres¢ el siguiente resultado: ',partidos[n].local,' ',i,' - ',partidos[n].visitante,' ',j);
                             conf:= false;
-                            barraCualquiera(3,'¨Es esto correcto? [S/N]');
-                            k:= readkey;
-                            while NOT(k in ['s','n','S','N']) do begin
-                                GotoXY(1,WhereY);
-                                clreol;
-                                barraCualquiera(15,'¨Es esto correcto? [S/N]');
-                                delay(50);
-                                GotoXY(1,WhereY);
-                                clreol;
-                                barraCualquiera(3,'¨Es esto correcto? [S/N]');
-                                k:= readkey;
-                            end;
+                            k:= teclaConsulta(C_CYAN,'¨Es esto correcto?');
                             if k in ['s','S'] then begin
                                 conf:= true;
-                                assign(fres, ARCHIVO_RESULTADOS);
-                                reset(fres);
-                                while not eof(fres) do read(fres,res);
-                                close(fres);
+                                cargarTablaProde(res);
                                 assign(fres, ARCHIVO_RESULTADOS);
                                 Rewrite(fres);
                                 res[n].gol_l:= i;
@@ -1127,43 +1063,20 @@ procedure modifPartido(id: integer);
                                 conf:= true;
                                 writeln();
                                 writeln();
-                                barraCualquiera(1,'¨Desea volver a ingresar el resultado? [S/N]');
-                                k:= readkey;
-                                while NOT(k in ['s','n','S','N']) do begin
-                                    GotoXY(1,WhereY);
-                                    clreol;
-                                    barraCualquiera(15,'¨Desea volver a ingresar el resultado? [S/N]');
-                                    delay(50);
-                                    GotoXY(1,WhereY);
-                                    clreol;
-                                    barraCualquiera(1,'¨Desea volver a ingresar el resultado? [S/N]');
-                                    k:= readkey;
-                                end;
+                                k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar el resultado?');
                                 if k in ['n','N'] then salir:= true;
                             end;
                         end else begin
                             conf:= true;
                             TextColor(12);
-                            writeln('  Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
+                            writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
                             writeln();
                             TextColor(LightGray);
                         end;
-                        close(f);
                     until (conf = true);
                     if NOT(salir) then begin
                         repetir:= false;
-                        barraCualquiera(1,'¨Desea agregar otro resultado? [S/N]');
-                        k:= readkey;
-                        while NOT(k in ['s','n','S','N']) do begin
-                            GotoXY(1,WhereY);
-                            clreol;
-                            barraCualquiera(15,'¨Desea agregar otro resultado? [S/N]');
-                            delay(50);
-                            GotoXY(1,WhereY);
-                            clreol;
-                            barraCualquiera(1,'¨Desea agregar otro resultado? [S/N]');
-                            k:= readkey;
-                        end;
+                        k:= teclaConsulta(C_AZUL,'¨Desea agregar otro resultado?');
                         if k in ['s','S'] then begin
                             repetir:= true;
                             ClrScr;
@@ -1199,20 +1112,16 @@ procedure modifPartido(id: integer);
 procedure menuJugador(id: integer);//Menu presentado a cada jugador.
     var
         opcion:char;
-        s:ansistring;//Esto es para que pueda usar "appendstr"
+        s:string;
         usuarios: tUsuarios;
-        f: file of tUsuarios;
     begin
         opcion:='0';
         repeat
             ClrScr;
             printLogoMenu();
-            assign(f, ARCHIVO_USUARIOS);
-            reset(f);
-            read(f,usuarios);
-            Close(f);
+            cargarTablaUsuarios(usuarios);
             s:= 'Menu de Jugador - ';
-            appendstr( s, usuarios[id].nombre);//Insertar nombre ingresado al final
+            s:= s+usuarios[id].nombre;//Insertar nombre ingresado al final
             barraTitulo(s);
             writeln();
             writeln();
@@ -1223,7 +1132,7 @@ procedure menuJugador(id: integer);//Menu presentado a cada jugador.
             writeln();
             if NOT(opcion in ['0'..'3']) then barraError()
             else if (opcion in ['2'..'3']) then barraProximamente()
-            end else begin
+            else begin
                 writeln();
                 writeln();
             end;
@@ -1236,7 +1145,7 @@ procedure menuJugador(id: integer);//Menu presentado a cada jugador.
             end;
         until (opcion='0');
     end;
-procedure loginJugador();//WIP
+procedure loginJugador();
     var
         usuarios: tUsuarios;
         f: file of tUsuarios;
@@ -1257,11 +1166,8 @@ procedure loginJugador();//WIP
                 Rewrite(f);
                 for i:=1 to MAX_USUARIOS do usuarios[i].nombre:='NULLUSER';
                 Write(f, usuarios);
-                barraTitulo('Listar Usuarios');
-                writeln();
-                writeln();
                 TextColor(LightGreen);
-                writeln('      Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
+                writelnCentrado('Base de datos de usuarios no encontrada. Se ha creado una en blanco.');
                 Close(f);
                 writeln();
                 writeln();
@@ -1272,10 +1178,7 @@ procedure loginJugador();//WIP
                 write('  Ingrese su nombre de usuario: ');
                 readln(nombreIng);
                 nombreIng:= UpperCase(nombreIng);
-                assign(f, ARCHIVO_USUARIOS);
-                reset(f);
-                read(f,usuarios);
-                Close(f);
+                cargarTablaUsuarios(usuarios);
                 nombrevalido:= false;
                 i:= 1;
                 while (i <= length(usuarios)) AND NOT(nombrevalido) do begin
@@ -1287,18 +1190,7 @@ procedure loginJugador();//WIP
                     writeln();
                     TextColor(LightGray);
                     writeln();
-                    barraCualquiera(4,'Nombre de usuario incorrecto. ¨Desea intentarlo nuevamente? [S/N]');
-                    k:= readkey;
-                    while NOT(k in ['s','n','S','N']) do begin
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(15,'Nombre de usuario incorrecto. ¨Desea intentarlo nuevamente? [S/N]');
-                        delay(50);
-                        GotoXY(1,WhereY);
-                        clreol;
-                        barraCualquiera(4,'Nombre de usuario incorrecto. ¨Desea intentarlo nuevamente? [S/N]');
-                        k:= readkey;
-                    end;
+                    k:= teclaConsulta(C_ROJO,'Nombre de usuario incorrecto. ¨Desea intentarlo nuevamente?');
                     if k in ['s','S'] then begin
                         repetir:= true;
                         ClrScr;
@@ -1328,13 +1220,8 @@ procedure menuInicial();//Menu inicial
                 writeln('    3: Demo de Colores');
                 writeln('    0: Salir');
                 writeln();
-                if NOT(opcion in ['0'..'2']) then begin
-                    TextBackground(Red);
-                    TextColor(White);
-                    writeln('  ­Opci¢n inv lida!                                                             ');
-                    TextBackground(Black);
-                    TextColor(LightGray);
-                end else begin
+                if NOT(opcion in ['0'..'3']) then barraError()
+                else begin
                     writeln();
                     writeln();
                 end;
@@ -1357,13 +1244,11 @@ procedure menuInicial();//Menu inicial
         delay(1000);
     end;
 
-
-
 begin
     ClrScr;
     printLogoIntro();
     Delay(DELAY_POST_INTRO);
-    barraCualquiera(5,'Presione cualquier tecla para continuar...');
+    barraCualquiera(C_VIOLETA,'Presione cualquier tecla para continuar...');
     readkey;
     menuInicial();
 end.
