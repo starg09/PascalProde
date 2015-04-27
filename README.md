@@ -13,5 +13,9 @@ TP de Algoritmos I, FIUBA, Catedra Guarna
 * ~~Cambiar nombre del record rDatos.~~
 * ~~Cambiar variables "k" en menus por "opcion".~~
 * ~~Modularizar~~
-* Preparar editor de resultados de jugador
-* Preparar Tabla de puntajes.
+* Preparar editor de resultados de jugador **(BETA)**
+* Preparar Tabla de puntajes. **(BETA)**
+
+# Documentación
+
+Para este programa se siguió la siguiente guía: [[link]](https://github.com/starg09/PascalProde/blob/master/Docs/TPAlgo11c2015.pdf)
