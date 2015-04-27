@@ -25,11 +25,13 @@ const
     C_CYANCLARO = 11;
     C_ROJOCLARO = 12;
     C_VIOLETACLARO = 13;
-    C_AMARILLOCLARO = 14;
+    C_AMARILLO = 14;
     C_BLANCO = 15;
     //Ancho de la pantalla. Usado para centrar textos, o hacer barras de titulo o coloreadas
     //(Maximo default en consola de Windows: 80)
     ANCHO_PANTALLA = 80;
+    //Puestos a mostrar por hoja en el ranking de usuarios.
+    PUESTOS_POR_HOJA_RANKING = 4;
 type
     rGoles = record
         gol_l: integer;
@@ -38,6 +40,7 @@ type
     rUsuarios = record
         nombre: string;
         prode: array[1..MAX_PARTIDOS] of rGoles;
+        puntos: integer;
         end;
     tUsuarios = array[1..MAX_USUARIOS] of rUsuarios;
     tProde = array[1..MAX_PARTIDOS] of rGoles;
@@ -113,6 +116,17 @@ procedure writelnCentrado(linea: string);
         for i:=1 to long do write(' ');
         write(linea);
         writeln();
+    end;
+function strCentrado(linea: string; i: integer): string;
+    Var
+        j: byte;
+        long: integer;
+    begin
+        long:= (i-length(linea)) div 2;
+        if (i-length(linea)) mod 2 = 1 then write(' ');
+        for j:=1 to long do write(' ');
+        write(linea);
+        for j:=1 to long do write(' ');
     end;
 procedure barraTitulo(linea: string);//Muestra una barra de titulo con fondo gris
     var
@@ -222,23 +236,24 @@ procedure ordenarUsuarios(var u: tUsuarios);
         i:=i-1; 
         end;
     end;
-function puntajePartido(id,n:integer): integer;
+function puntajePartido(id,n:integer; usuarios: tUsuarios; res: tProde): integer;
     var
-        usuarios: tUsuarios;
-        res: tProde;
         i,p1,p2,r1,r2: integer;
     begin
-        cargarTablaUsuarios(usuarios);
-        cargarTablaProde(res);
         i:= 0;
-        if (res[n].gol_l < res[n].gol_v) then p1:=0 else if(res[n].gol_l > res[n].gol_v) then p1:=2 else p1:=1;
-        if (usuarios[id].prode[n].gol_l < usuarios[id].prode[n].gol_v) then p2:=0 else if(usuarios[id].prode[n].gol_l > usuarios[id].prode[n].gol_v) then p2:=2 else p2:=1;
-        if (p1=p2) then i:=i+2;
+        //Comprobaci¢n de goles locales
         if (usuarios[id].prode[n].gol_l = res[n].gol_l) then i:= i+1;
+        //Comprobaci¢n de goles visitantes
         if (usuarios[id].prode[n].gol_v = res[n].gol_v) then i:= i+1;
+        //Comprobaci¢n de diferencia de gol
         r1:= usuarios[id].prode[n].gol_l - usuarios[id].prode[n].gol_v;
         r2:= res[n].gol_l - res[n].gol_v;
         if (r1=r2) then i:= i+1;
+        //Comprobaci¢n de resultado b sico
+        if (res[n].gol_l < res[n].gol_v) then p1:=0 else if(res[n].gol_l > res[n].gol_v) then p1:=2 else p1:=1;
+        if (usuarios[id].prode[n].gol_l < usuarios[id].prode[n].gol_v) then p2:=0 else if(usuarios[id].prode[n].gol_l > usuarios[id].prode[n].gol_v) then p2:=2 else p2:=1;
+        if (p1=p2) then i:=i+2;
+        //Devoluci¢n de Puntaje
         puntajePartido:= i;
     end;
 procedure resetearResultados();
@@ -268,6 +283,54 @@ procedure resetearFixture();
         cargar_fixture(fixture);
         Write(f,fixture);
         Close(f);
+    end;
+function calcularPuntos(var usuarios: tUsuarios; var res: tProde; id: integer): integer;
+    var
+        j,puntos: integer;
+    begin
+        puntos:= 0;
+        for j:= 1 to MAX_PARTIDOS do if NOT((res[j].gol_l<0) OR (res[j].gol_v<0)) then puntos:= puntos + puntajePartido(id,j,usuarios,res);
+        calcularPuntos:= puntos;
+    end;
+procedure rankingJugadores(var usuarios: tUsuarios; var res: tProde);
+    var
+        cambio:boolean; 
+        n,i,j:integer; 
+        temp:rUsuarios; 
+    begin
+        n:= 1;
+        while (n <= MAX_USUARIOS) and (usuarios[n].nombre<>'NULLUSER') do begin
+            usuarios[n].puntos:= calcularPuntos(usuarios,res,n);
+            n:= n+1;
+        end;
+        cambio:=True; 
+        i:= High(usuarios);//valor mas alto del array
+        while (cambio) do begin 
+            cambio:= false; 
+            j:= 1;//Valor mas bajo del array
+            while j < i do begin 
+                if ((usuarios[j].puntos<usuarios[j+1].puntos) and (usuarios[j+1].nombre <> 'NULLUSER'))
+                or ((usuarios[j].puntos=usuarios[j+1].puntos) and (usuarios[j].nombre>usuarios[j+1].nombre) and (usuarios[j+1].nombre <> 'NULLUSER'))
+                or (usuarios[j].nombre = 'NULLUSER') then begin 
+                    temp:= usuarios[j]; 
+                    usuarios[j]:= usuarios[j+1]; 
+                    usuarios[j+1]:= temp; 
+                    cambio:= true; 
+                end;
+                j:= j+1; 
+            end;
+        i:=i-1; 
+        end;
+    end;
+procedure lineaTabla(var usuarios: tUsuarios; var res: tProde; i: integer; var completo: boolean; nombre: string);//var en tablas para optimizar, en completo por modificarlo
+    var
+        puntos: integer;
+    begin
+        puntos:= calcularPuntos(usuarios,res,i);
+        if (nombre = usuarios[i].nombre) then TextColor(Yellow);
+        writeln('  ³ ',strCentrado(IntToStr(i),9),' ³ ',strCentrado(usuarios[i].nombre,10),' ³ ',strCentrado(IntToStr(puntos),9),' ³');
+        TextColor(LightGray);
+        if (i>=MAX_USUARIOS) OR (usuarios[i+1].nombre = 'NULLUSER') then completo:= true;
     end;
 procedure democolores();//Remover antes de mandar final
     var
@@ -376,7 +439,7 @@ procedure listarPartidos();
                 end;
                 if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
                     writeln();
-                    TextColor(6);
+                    TextColor(C_AMARILLO);
                     write('  Presione cualquier tecla para mostrar la siguiente pagina...');
                     TextColor(LightGray);
                     np:= true;
@@ -439,7 +502,7 @@ procedure cargarResultado();
                 n:= StrToIntDef(input,-1);
                 if (length(input) = 0) then n:=-2;
                 if n=-2 then begin
-                    TextColor(12);
+                    TextColor(C_ROJOCLARO);
                     writeln();
                     writeln();
                     writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
@@ -473,7 +536,7 @@ procedure cargarResultado();
                         writeln();
                         TextColor(Yellow);
                         write('    Partido ',n,': ',partidos[n].local,' - ',partidos[n].visitante);
-                        TextColor(8);
+                        TextColor(C_GRIS);
                         if (res[n].gol_l < 0) or (res[n].gol_v < 0) then writeln() else writeln(' (Resultado actual: ',res[n].gol_l,' - ',res[n].gol_v,')');
                         TextColor(LightGray);
                         writeln();
@@ -607,7 +670,7 @@ procedure listarUsuarios();
                     if (i mod 10 = 1) AND (i < max) then begin
                         writeln();
                         writeln();
-                        TextColor(6);
+                        TextColor(C_AMARILLO);
                         write('  Presione cualquier tecla para mostrar la siguiente p gina...');
                         TextColor(LightGray);
                         readkey;
@@ -912,15 +975,15 @@ procedure listarProde(id: integer);
                 end;
                 if (i < MAX_PARTIDOS) AND (instancia<>partidos[i+1].instancia) then cambio:= true;
                 write('    ',i,': ',partidos[i].local,' - ',partidos[i].visitante);
-                TextColor(8);
-                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) then write(' (',res[i].gol_l,'-',res[i].gol_v,')');
+                TextColor(C_GRIS);
+                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) then write(' (',usuarios[id].prode[i].gol_l,'-',usuarios[id].prode[i].gol_v,')');
                 if NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' [',res[i].gol_l,'-',res[i].gol_v,']');
-                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) AND NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' (',puntajePartido(id,i),')');
+                if NOT((usuarios[id].prode[i].gol_l<0) OR (usuarios[id].prode[i].gol_v<0)) AND NOT((res[i].gol_l<0) OR (res[i].gol_v<0)) then write(' (',puntajePartido(id,i,usuarios,res),')');
                 writeln();
                 TextColor(LightGray);
                 if (i < MAX_PARTIDOS) AND ((j mod 9 = 0) OR (cambio AND (j mod 9 >5))) then begin
                     writeln();
-                    TextColor(6);
+                    TextColor(C_AMARILLO);
                     write('  Presione cualquier tecla para mostrar la siguiente pagina...');
                     TextColor(LightGray);
                     np:= true;
@@ -946,8 +1009,8 @@ procedure modifPartido(id: integer);//WIP
     var
         partidos: tFixture;
         usuarios: tUsuarios;
+        f: file of tUsuarios;
         res: tProde;
-        fres: file of tProde;
         n,i,j: integer;
         k: char;
         repetir,pv,conf,salir: boolean;
@@ -956,7 +1019,7 @@ procedure modifPartido(id: integer);//WIP
         ClrScr;
         printLogoMenu();
         cargarTablaUsuarios(usuarios);
-        barraTitulo('Subir resultado - '+usuarios[id].nombre);
+        barraTitulo('Modificar Partido - '+usuarios[id].nombre);
         writeln();
         writeln();
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
@@ -978,49 +1041,52 @@ procedure modifPartido(id: integer);//WIP
             write('  Presione cualquier tecla para volver al men£ anterior...');
             readkey;
         end else begin
+            cargarTablaProde(res);
+            cargarTablaFixture(partidos);
             repeat
                 repetir:= false;
                 write('  Ingrese el n£mero de partido a modificar: ');
                 readln(input);
                 n:= StrToIntDef(input,-1);
                 if (length(input) = 0) then n:=-2;
+                writeln();
                 if n=-2 then begin
-                    TextColor(12);
-                    writeln();
-                    writeln();
-                    writelnCentrado('Uno o ambos valores fueron env¡ados en blanco. Operaci¢n cancelada.');
-                    writeln();
-                    TextColor(LightGray);
-                    writeln();
-                    k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar un resultado?');
+                    k:= teclaConsulta(C_ROJO,'No se ingres¢ ning£n n£mero de partido. ¨Desea ingresar uno nuevamente?');
                     if k in ['s','S'] then begin
                         repetir:= true;
                         ClrScr;
                         printLogoMenu();
-                        barraTitulo('Carga de resultado - '+usuarios[id].nombre);
+                        barraTitulo('Modificar Partido - '+usuarios[id].nombre);
                         writeln();
                         writeln();
                     end;
                 end else if (n<1) OR (n>MAX_PARTIDOS) then begin
-                    k:= teclaConsulta(C_ROJO,'N£mero de partido fuera de rango, ¨desea ingresar uno nuevamente?');
+                    k:= teclaConsulta(C_ROJO,'N£mero de partido fuera de rango. ¨Desea ingresar uno nuevamente?');
                     if k in ['s','S'] then begin
                         repetir:=true;
                         ClrScr;
                         printLogoMenu();
-                        barraTitulo('Carga de resultado');
+                        barraTitulo('Modificar Partido - '+usuarios[id].nombre);
+                        writeln();
+                        writeln();
+                    end;
+                end else if NOT((res[n].gol_l < 0) or (res[n].gol_v < 0)) then begin
+                    k:= teclaConsulta(C_ROJO,'Ya no se puede modificar ese partido. ¨Desea ingresar uno nuevamente?');
+                    if k in ['s','S'] then begin
+                        repetir:=true;
+                        ClrScr;
+                        printLogoMenu();
+                        barraTitulo('Modificar Partido - '+usuarios[id].nombre);
                         writeln();
                         writeln();
                     end;
                 end else begin
                     salir:= false;
                     repeat
-                        cargarTablaFixture(partidos);
-                        cargarTablaProde(res);
-                        writeln();
                         TextColor(Yellow);
                         write('    Partido ',n,': ',partidos[n].local,' - ',partidos[n].visitante);
-                        TextColor(8);
-                        if (res[n].gol_l < 0) or (res[n].gol_v < 0) then writeln() else writeln(' (Resultado actual: ',res[n].gol_l,' - ',res[n].gol_v,')');
+                        TextColor(C_GRIS);
+                        if (usuarios[id].prode[n].gol_l < 0) or (usuarios[id].prode[n].gol_v < 0) then writeln() else writeln(' (Predicci¢n actual: ',usuarios[id].prode[n].gol_l,' - ',usuarios[id].prode[n].gol_v,')');
                         TextColor(LightGray);
                         writeln();
                         TextColor(Green);
@@ -1041,29 +1107,28 @@ procedure modifPartido(id: integer);//WIP
                         TextColor(LightGray);
                         writeln();
                         if NOT((i = -99) or (j = -99)) then begin
-                            writeln('  Usted ingres¢ el siguiente resultado: ',partidos[n].local,' ',i,' - ',partidos[n].visitante,' ',j);
+                            writeln('  Usted ingres¢ la siguiente predicci¢n: ',partidos[n].local,' ',i,' - ',partidos[n].visitante,' ',j);
                             conf:= false;
                             k:= teclaConsulta(C_CYAN,'¨Es esto correcto?');
                             if k in ['s','S'] then begin
                                 conf:= true;
-                                cargarTablaProde(res);
-                                assign(fres, ARCHIVO_RESULTADOS);
-                                Rewrite(fres);
-                                res[n].gol_l:= i;
-                                res[n].gol_v:= j;
-                                Write(fres,res);
-                                close(fres);
+                                assign(f, ARCHIVO_USUARIOS);
+                                Rewrite(f);
+                                usuarios[id].prode[n].gol_l:= i;
+                                usuarios[id].prode[n].gol_v:= j;
+                                Write(f,usuarios);
+                                close(f);
                                 writeln();
                                 writeln();
                                 TextColor(LightGreen);
-                                writeln('    Resultado guardado con ‚xito.');
+                                writeln('    Predicci¢n guardada con ‚xito.');
                                 TextColor(LightGray);
                                 writeln();
                             end else begin
                                 conf:= true;
                                 writeln();
                                 writeln();
-                                k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar el resultado?');
+                                k:= teclaConsulta(C_AZUL,'¨Desea volver a ingresar la predicci¢n?');
                                 if k in ['n','N'] then salir:= true;
                             end;
                         end else begin
@@ -1073,15 +1138,16 @@ procedure modifPartido(id: integer);//WIP
                             writeln();
                             TextColor(LightGray);
                         end;
+                        writeln();
                     until (conf = true);
                     if NOT(salir) then begin
                         repetir:= false;
-                        k:= teclaConsulta(C_AZUL,'¨Desea agregar otro resultado?');
+                        k:= teclaConsulta(C_AZUL,'¨Desea agregar otra predicci¢n?');
                         if k in ['s','S'] then begin
                             repetir:= true;
                             ClrScr;
                             printLogoMenu();
-                            barraTitulo('Carga de resultado');
+                            barraTitulo('Modificar Partido - '+usuarios[id].nombre);
                             writeln();
                             writeln();
                         end;
@@ -1109,6 +1175,67 @@ procedure modifPartido(id: integer);//WIP
             writeln();}
         end;
     end;
+procedure tablaPosiciones(id: integer);
+    var
+        partidos: tFixture;
+        usuarios: tUsuarios;
+        res: tProde;
+        i,imax,imod: integer;
+        titulo: string;
+        completo: boolean;
+    begin
+        ClrScr;
+        printLogoMenu();
+        cargarTablaUsuarios(usuarios);
+        imax:= 0;
+        for i:= 1 to MAX_USUARIOS do if (usuarios[i].nombre = 'NULLUSER') and (imax = 0) then imax:= i;
+        if (imax mod PUESTOS_POR_HOJA_RANKING <> 0) then imod:= 1 else imod:= 0;
+        i:= 1;
+        barraTitulo('Tabla de Posiciones ('+IntToStr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+IntToStr((imax div PUESTOS_POR_HOJA_RANKING)+imod)+')');
+        writeln();
+        if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
+            TextColor(Red);
+            writelnCentrado('Error: todav¡a no hay un fixture cargado que mostrar.');
+            writeln();
+            writeln();
+        end else if NOT(FileExists(ARCHIVO_RESULTADOS)) then begin
+            TextColor(Red);
+            writelnCentrado('ERROR: No se pudo encontrar la grilla central.');
+            writelnCentrado('Por favor, reporte este error a su administrador.');
+            writeln();
+        end else begin
+            cargarTablaFixture(partidos);
+            cargarTablaProde(res);
+            rankingJugadores(usuarios,res);//Revisando
+            completo:= false;
+            writeln('  ÚÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄ¿');
+            writeln('  ³ Ubicaci¢n ³   Nombre   ³  Puntaje  ³');
+            writeln('  ÃÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄ´');
+            while (i <= MAX_USUARIOS) and NOT(completo) do begin
+                lineaTabla(usuarios,res,i,completo,usuarios[id].nombre);
+                i:= i+1;
+                if (completo) or (i mod PUESTOS_POR_HOJA_RANKING = 1) then writeln('  ÀÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÙ') else writeln('  ÃÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄ´');
+                if (i mod PUESTOS_POR_HOJA_RANKING = 1) and (i<imax) then begin
+                    writeln();
+                    TextColor(C_AMARILLO);
+                    write('  Presione cualquier tecla para mostrar la siguiente pagina...');
+                    TextColor(LightGray);
+                    readkey;
+                    ClrScr;
+                    printLogoMenu();
+                    barraTitulo('Tabla de Posiciones ('+IntToStr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+IntToStr((imax div PUESTOS_POR_HOJA_RANKING)+imod)+')');
+                    writeln();
+                    writeln('  ÚÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄ¿');
+                    writeln('  ³ Ubicaci¢n ³   Nombre   ³  Puntaje  ³');
+                    writeln('  ÃÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄ´');
+                end;
+            end;
+        end;
+        writeln();
+        TextColor(LightGray);
+        write('  Presione cualquier tecla para volver al men£ anterior...');
+        readkey;
+    end;
 procedure menuJugador(id: integer);//Menu presentado a cada jugador.
     var
         opcion:char;
@@ -1131,7 +1258,7 @@ procedure menuJugador(id: integer);//Menu presentado a cada jugador.
             writeln('    0: Volver al men£ principal');
             writeln();
             if NOT(opcion in ['0'..'3']) then barraError()
-            else if (opcion in ['2'..'3']) then barraProximamente()
+            {else if (opcion in ['2'..'3']) then barraProximamente()}
             else begin
                 writeln();
                 writeln();
@@ -1140,8 +1267,8 @@ procedure menuJugador(id: integer);//Menu presentado a cada jugador.
             opcion:=readkey;
             case opcion of
                 '1': listarProde(id);
-                '2': ;
-                '3': ;
+                '2': modifPartido(id);
+                '3': tablaPosiciones(id);
             end;
         until (opcion='0');
     end;
