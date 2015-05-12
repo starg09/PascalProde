@@ -635,7 +635,7 @@ procedure listarUsuarios();
             cargarTablaUsuarios(usuarios);
             i:=1;
             maxalcanzado:=false;
-            while (i <= MAX_USUARIOS) AND (NOT maxalcanzado) do if usuarios[i].nombre='NULLUSER' then maxalcanzado:=true else i:=i+1;
+            while (i < MAX_USUARIOS) AND (NOT maxalcanzado) do if usuarios[i].nombre='NULLUSER' then maxalcanzado:=true else i:=i+1;
             max:= i;
             if max=1 then begin
                 barraTitulo('Listar Usuarios');
@@ -655,7 +655,7 @@ procedure listarUsuarios();
                 while (i <= max) and (usuarios[i].nombre<>'NULLUSER') do begin
                     writeln('  * ',usuarios[i].nombre);
                     i:= i+1;
-                    if (i mod 10 = 1) AND (i < max) then begin
+                    if (i < max) AND (i mod 10 = 1) then begin
                         writeln();
                         writeln();
                         TextColor(C_AMARILLO);
@@ -726,7 +726,7 @@ procedure agregarUsuario();
                 if usuarios[i].nombre='NULLUSER' then maxalcanzado:=false;
                 i:=i+1;
             end;
-            if maxalcanzado then begin
+            if (maxalcanzado) then begin
                 TextColor(Red);
                 writelnCentrado('Ya se alcanz¢ el l¡mite m ximo de usuarios para el sistema.');
                 writeln();
@@ -1268,7 +1268,7 @@ procedure loginJugador();
                 cargarTablaUsuarios(usuarios);
                 nombrevalido:= false;
                 i:= 1;
-                while (i <= length(usuarios)) AND NOT(nombrevalido) do begin
+                while (nombreIng <> 'NULLUSER') AND (i <= length(usuarios)) AND NOT(nombrevalido) do begin
                     if (usuarios[i].nombre = nombreIng) then nombrevalido:= true else i:= i+1;
                 end;
                 if (nombrevalido) then begin
