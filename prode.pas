@@ -121,12 +121,15 @@ function strCentrado(linea: string; i: integer): string;
     Var
         j: byte;
         long: integer;
+        retorno: string;
     begin
         long:= (i-length(linea)) div 2;
-        if (i-length(linea)) mod 2 = 1 then write(' ');
-        for j:=1 to long do write(' ');
-        write(linea);
-        for j:=1 to long do write(' ');
+        retorno:= '';
+        if (i-length(linea)) mod 2 = 1 then retorno:= retorno+' ';
+        for j:=1 to long do retorno:= retorno+' ';
+        retorno:= retorno+linea;
+        for j:=1 to long do retorno:= retorno+' ';
+        strCentrado:= retorno;
     end;
 procedure barraTitulo(linea: string);//Muestra una barra de titulo con fondo gris
     var
@@ -184,6 +187,7 @@ function teclaConsulta(color: byte; s: string):char;
             barraCualquiera(color,s+' [S/N]');
             k:= readkey;
         end;
+        teclaConsulta:= k;
     end;
 (*Carga de archivos*)
 procedure cargarTablaUsuarios(var t: tUsuarios);
@@ -334,7 +338,6 @@ procedure lineaTabla(var usuarios: tUsuarios; var res: tProde; i: integer; var c
     end;
 procedure democolores();//Remover antes de mandar final
     var
-        k:char;
         i: integer;
     begin
         Clrscr;
@@ -360,15 +363,15 @@ procedure democolores();//Remover antes de mandar final
             LowVideo;
             write(' &',i,' ');
         end;
-        k:=readkey;
+        readkey;
     end;
 (*Procedimientos basicos (Menus) *)
 procedure listarPartidos();
     var
         partidos: tFixture;
         res: tProde;
-        i,j,max,jmax: integer;
-        maxalcanzado,cambio,np: boolean;
+        i,j,jmax: integer;
+        cambio,np: boolean;
         instancia: string;
         s: string;
     begin
@@ -406,6 +409,7 @@ procedure listarPartidos();
             end;
             i:= 1;
             j:= 1;
+            np:= false;
             while (i <= MAX_PARTIDOS) do begin
                 if ((j mod 9 = 1) OR (np)) then begin
                     np:= false;
@@ -468,7 +472,7 @@ procedure cargarResultado();
         fres: file of tProde;
         n,i,j: integer;
         k: char;
-        repetir,pv,conf,salir: boolean;
+        repetir,conf,salir: boolean;
         input: string;
     begin
         ClrScr;
@@ -630,8 +634,8 @@ procedure listarUsuarios();
     var
         usuarios: tUsuarios;
         f: file of tUsuarios;
-        i,j,l,lmax,max: integer;
-        maxalcanzado,mayor,nickenuso,agregado: boolean;
+        i,max: integer;
+        maxalcanzado: boolean;
         s: string;
     begin
         ClrScr;
@@ -906,10 +910,9 @@ procedure listarProde(id: integer);
     var
         partidos: tFixture;
         usuarios: tUsuarios;
-        fusuarios: file of tUsuarios;
         res: tProde;
-        i,j,max,jmax: integer;
-        maxalcanzado,cambio,np: boolean;
+        i,j,jmax: integer;
+        cambio,np: boolean;
         s,instancia: string;
     begin
         ClrScr;
@@ -949,6 +952,7 @@ procedure listarProde(id: integer);
             end;
             i:= 1;
             j:= 1;
+            np:= false;
             while (i <= MAX_PARTIDOS) do begin
                 if ((j mod 9 = 1) OR (np)) then begin
                     np:= false;
@@ -1013,7 +1017,7 @@ procedure modifPartido(id: integer);//WIP
         res: tProde;
         n,i,j: integer;
         k: char;
-        repetir,pv,conf,salir: boolean;
+        repetir,conf,salir: boolean;
         input: string;
     begin
         ClrScr;
@@ -1181,7 +1185,6 @@ procedure tablaPosiciones(id: integer);
         usuarios: tUsuarios;
         res: tProde;
         i,imax,imod: integer;
-        titulo: string;
         completo: boolean;
     begin
         ClrScr;
