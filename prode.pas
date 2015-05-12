@@ -1,5 +1,5 @@
 Program prode;
-uses strutils,sysutils,crt,cargarFixture;
+uses strutils,sysutils,crt,CargarFixture;
 const
     MAX_USUARIOS = 20;
     //Nombre de los archivos usados para almacenar los datos: El fixture, los resultados ingresados por el admin y los prodes y nombres de los usuarios.
