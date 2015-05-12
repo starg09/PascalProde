@@ -644,7 +644,10 @@ procedure listarUsuarios();
                 TextColor(Red);
                 writelnCentrado('No hay usuarios registrados en el sistema.');
             end else begin
-                s:='Listar Usuarios (1/'+inttostr((max div 10)+1)+')';
+                if (max mod 10 = 0) then
+                    s:='Listar Usuarios (1/'+inttostr(max div 10)+')'
+                else
+                    s:='Listar Usuarios (1/'+inttostr((max div 10)+1)+')';
                 barraTitulo(s);
                 writeln();
                 ordenarUsuarios(usuarios);
@@ -661,7 +664,10 @@ procedure listarUsuarios();
                         readkey;
                         ClrScr;
                         printLogoMenu();
-                        s:='Listar Usuarios ('+inttostr((i div 10)+1)+'/'+inttostr((max div 10)+1)+')';
+                        if (max mod 10 = 0) then
+                            s:='Listar Usuarios ('+inttostr((i div 10)+1)+'/'+inttostr(max div 10)+')'
+                        else
+                            s:='Listar Usuarios ('+inttostr((i div 10)+1)+'/'+inttostr((max div 10)+1)+')';
                         barraTitulo(s);
                         writeln();
                     end;
