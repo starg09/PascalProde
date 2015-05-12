@@ -1142,16 +1142,22 @@ procedure tablaPosiciones(id: integer);
         usuarios: tUsuarios;
         res: tProde;
         i,imax,imod: integer;
-        completo: boolean;
+        maxalcanzado,completo: boolean;
+        s: string;
     begin
         ClrScr;
         printLogoMenu();
         cargarTablaUsuarios(usuarios);
-        imax:= 0;
-        for i:= 1 to MAX_USUARIOS do if (usuarios[i].nombre = 'NULLUSER') and (imax = 0) then imax:= i;
-        if (imax mod PUESTOS_POR_HOJA_RANKING <> 0) then imod:= 1 else imod:= 0;
+        i:=1;
+        maxalcanzado:=false;
+        while (i < MAX_USUARIOS) AND (NOT maxalcanzado) do if usuarios[i].nombre='NULLUSER' then maxalcanzado:=true else i:=i+1;
+        imax:= i;
         i:= 1;
-        barraTitulo('Tabla de Posiciones ('+IntToStr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+IntToStr((imax div PUESTOS_POR_HOJA_RANKING)+imod)+')');
+        if (imax mod PUESTOS_POR_HOJA_RANKING = 0) then
+            s:='Tabla de Posiciones (1/'+inttostr(imax div PUESTOS_POR_HOJA_RANKING)+')'
+        else
+            s:='Tabla de Posiciones (1/'+inttostr((imax div PUESTOS_POR_HOJA_RANKING)+1)+')';
+        barraTitulo(s);
         writeln();
         if NOT(FileExists(ARCHIVO_FIXTURE)) then begin
             TextColor(Red);
@@ -1183,7 +1189,11 @@ procedure tablaPosiciones(id: integer);
                     readkey;
                     ClrScr;
                     printLogoMenu();
-                    barraTitulo('Tabla de Posiciones ('+IntToStr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+IntToStr((imax div PUESTOS_POR_HOJA_RANKING)+imod)+')');
+                    if (imax mod PUESTOS_POR_HOJA_RANKING = 0) then
+                        s:='Tabla de Posiciones ('+inttostr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+inttostr(imax div PUESTOS_POR_HOJA_RANKING)+')'
+                    else
+                        s:='Tabla de Posiciones ('+inttostr((i div PUESTOS_POR_HOJA_RANKING)+1)+'/'+inttostr((imax div PUESTOS_POR_HOJA_RANKING)+1)+')';
+                        barraTitulo(s);
                     writeln();
                     writeln('  ÚÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄ¿');
                     writeln('  ³ Ubicaci¢n ³   Nombre   ³  Puntaje  ³');
