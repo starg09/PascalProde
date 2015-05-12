@@ -609,25 +609,6 @@ procedure cargarResultado();
                     end;
                 end;
             until NOT (repetir);
-            {assign(f, ARCHIVO_FIXTURE);
-            Rewrite(f);
-            cargar_fixture(fixture);
-            Write(f,fixture);
-            Close(f);
-            assign(fres, ARCHIVO_RESULTADOS);
-            Rewrite(fres);
-            i:= 1;
-            while i<=MAX_PARTIDOS do begin
-                res[i].gol_l:= -1;
-                res[i].gol_v:= -1;
-                i:= i+1;
-            end;
-            Write(fres,res);
-            Close(fres);
-            TextColor(LightGreen);
-            writeln('                           ­Fixture cargado con ‚xito!');
-            writeln();
-            writeln();}
         end;
     end;
 procedure listarUsuarios();
@@ -820,17 +801,6 @@ procedure agregarUsuario();
                 end;
             end;
             Close(f);
-            {assign(f, ARCHIVO_USUARIOS);
-            reset(f);
-            read(f,usuarios);
-            writeln();
-            i:= 1;
-            while i<=MAX_USUARIOS do 
-            begin
-                write(' User ',i,': ',usuarios[i]);
-                i:= i+1;
-            end;
-            close(f);}
         end;
 
         writeln();
@@ -1158,25 +1128,6 @@ procedure modifPartido(id: integer);//WIP
                     end;
                 end;
             until NOT (repetir);
-            {assign(f, ARCHIVO_FIXTURE);
-            Rewrite(f);
-            cargar_fixture(fixture);
-            Write(f,fixture);
-            Close(f);
-            assign(fres, ARCHIVO_RESULTADOS);
-            Rewrite(fres);
-            i:= 1;
-            while i<=MAX_PARTIDOS do begin
-                res[i].gol_l:= -1;
-                res[i].gol_v:= -1;
-                i:= i+1;
-            end;
-            Write(fres,res);
-            Close(fres);
-            TextColor(LightGreen);
-            writeln('                           ­Fixture cargado con ‚xito!');
-            writeln();
-            writeln();}
         end;
     end;
 procedure tablaPosiciones(id: integer);
