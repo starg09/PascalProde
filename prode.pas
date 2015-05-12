@@ -293,7 +293,7 @@ function calcularPuntos(var usuarios: tUsuarios; var res: tProde; id: integer): 
         j,puntos: integer;
     begin
         puntos:= 0;
-        for j:= 1 to MAX_PARTIDOS do if NOT((res[j].gol_l<0) OR (res[j].gol_v<0)) then puntos:= puntos + puntajePartido(id,j,usuarios,res);
+        for j:= 1 to MAX_PARTIDOS do if NOT((res[j].gol_l<0) OR (res[j].gol_v<0)) AND NOT((usuarios[id].prode[j].gol_l<0) OR (usuarios[id].prode[j].gol_v<0)) then puntos:= puntos + puntajePartido(id,j,usuarios,res);
         calcularPuntos:= puntos;
     end;
 procedure rankingJugadores(var usuarios: tUsuarios; var res: tProde);
